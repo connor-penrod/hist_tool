@@ -8,6 +8,15 @@ import math
 import statistics 
 from matplotlib.backends.backend_pdf import PdfPages
 
+#utilities
+
+def get_keywords(filename):
+    with open(filename, "r") as infile:
+        for line in infile:
+            labels = line.split(",")
+            break
+        return labels
+
 class hist_model(object):
     def __init__(self):
         self.parameters = []
@@ -118,8 +127,8 @@ if __name__ == "__main__":
     obj1.changeTitle("Test2")
     obj1.changeLabels(("EW < 800", "EW > 800"))
     obj1.changeLog(True)
-    obj1.addParameter(0,["EW_rest"],lambda x : x>800)
-    obj1.addParameter(1,["EW_rest"],lambda x : x<800)
+    obj1.addParameter(0,["problematic", "irregular"],lambda y, z : y <= 2 and z < 3)
+    obj1.addParameter(1,["problematic", "irregular"],lambda y, z : y <= 2 and z >= 3)
     obj1.addTargetQuantity("EW_rest")
     
     obj2 = hist_model()
