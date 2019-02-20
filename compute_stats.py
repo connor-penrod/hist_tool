@@ -9,7 +9,7 @@ import statistics
 from matplotlib.backends.backend_pdf import PdfPages
 
 #utilities
-
+#{EW_rest} < 1200 and {problematic} <= 2 and {compact} >= 3
 def get_keywords(filename):
     with open(filename, "r") as infile:
         for line in infile:
@@ -23,7 +23,7 @@ class hist_model(object):
         self.enableLog = False
         self.sample1 = []
         self.sample2 = []
-        self.title = "<Title>"
+        self.title = ""
         self.labels = ("label1", "label2")
         self.targetQuantity = None
     
@@ -115,7 +115,7 @@ class hist_stats(object):
         pp = PdfPages("statistics.pdf")
         
         for hist_obj in self.objList:
-            self.create_2hist(hist_obj.sample1, hist_obj.sample2, hist_obj.title + " " + hist_obj.targetQuantity, pdf=pp, labels=hist_obj.labels, log=hist_obj.enableLog)
+            self.create_2hist(hist_obj.sample1, hist_obj.sample2, hist_obj.title, pdf=pp, labels=hist_obj.labels, log=hist_obj.enableLog)
                     
         pp.close()
         print("Histograms saved to PDF.")

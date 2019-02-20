@@ -46,9 +46,13 @@ class HistToolApp(App):
         btnLayout = BoxLayout(size_hint=(1, None), height=50)
         btnLayout.add_widget(add_hist_button)
         btnLayout.add_widget(create_hists_button)
+        
+        histLayout = BoxLayout(orientation='vertical')
+        histLayout.add_widget(Label(text="test"))
+        histLayout.add_widget(Label(text="test2"))
     
         root = BoxLayout(orientation='vertical')
-        root.add_widget(Widget())
+        root.add_widget(histLayout)
         root.add_widget(btnLayout)
         return root
         
@@ -82,12 +86,17 @@ class HistToolApp(App):
         settings = histogram_screen()
         print(settings)
         
-        eval_params = self.parseEvalString(settings[3])
+        eval_params1 = self.parseEvalString(settings[3])
+        eval_params2 = self.parseEvalString(settings[5])
+        
+        print(eval_params1)
+        print(eval_params2)
+        
         model = hist_model()
         
         model.addTargetQuantity(settings[1])
-        model.addParameter(0, eval_params[0], eval(eval_params[1]))
-        model.addParameter(1, eval_params[0], eval(eval_params[1]))
+        model.addParameter(0, eval_params1[0], eval(eval_params1[1]))
+        model.addParameter(1, eval_params2[0], eval(eval_params2[1]))
         model.changeLog(settings[6])
         model.changeTitle(settings[0])
         model.changeLabels((settings[2],settings[4]))
