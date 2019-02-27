@@ -2,6 +2,7 @@ from kivy.app import App
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
+from kivy.uix.stacklayout import StackLayout
 from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
 from kivy.uix.checkbox import CheckBox
@@ -9,6 +10,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.widget import Widget
 from compute_stats_gui_simple import histogram_screen
 from compute_stats import hist_model, hist_stats
+from collections import defaultdict
 
 #class TextForm(BoxLayout):
 #    def __init__(self, **kwargs):
@@ -20,41 +22,74 @@ from compute_stats import hist_model, hist_stats
 #    def build(self):
 #        return self.layout
         
-class LoginScreen(GridLayout):
+all_settings = defaultdict(int)
+displayed_settings = defaultdict(bool)
 
-    def __init__(self, **kwargs):
-        super(LoginScreen, self).__init__(**kwargs)
-        self.cols = 2
-        self.height = 20
-        self.button = Button(text='Make Histogram', font_size=14, on_press=self.addHistogram)
-        self.button.size_hint = (1,0.2)
-        self.add_widget(self.button)
-
+def saveSettings():
+    saved_settings = [all_settings[key] for key in all_settings if all_settings[key] != 0]
+    print(saved_settings)
+    with open('last_settings.hst', 'w') as f:
+        for item in saved_settings:
+            f.write("%s\n" % item)
+                
+def loadSettings():
+    idx = 0
+    with open('last_settings.hst', 'r') as f:
+        for line in f:
+            all_settings[idx] = (eval(line))
+            idx += 1
+    return idx
+        
+class HistDescriptor(BoxLayout):
+    def __init__(self, title, parentWidget, id, **kwargs):
+        super(HistDescriptor, self).__init__(**kwargs)
+        self.orientation = 'horizontal'
+        self.size_hint = (1,0.1)
+        self.add_widget(Label(text=title,size_hint=(None,0.5)))
+        self.add_widget(Button(text="Remove",size_hint=(None,0.5), on_press=self.removeHist))
+        self.parentWidget = parentWidget
+        self.setting_id = id
+    #def build(self):
+    #    return self
+    def removeHist(self, instance):
+        self.parentWidget.remove_widget(self)
+        all_settings[self.setting_id] = 0
+        displayed_settings[self.setting_id] = False
+        saveSettings()
 
 class HistToolApp(App):
 
     def __init__(self):
         super().__init__()
-        self.all_settings = []
         self.models = []
+        self.histLayout = None
+        self.usedIDs = []
+        self.currID = loadSettings() + 1
 
     def build(self):
     
         add_hist_button = Button(text='Add Histogram', font_size=14, on_press=self.addHistogram)
         create_hists_button = Button(text='Create Histograms', font_size=14, on_press=self.createHistograms)
+        save_hists_button = Button(text='Save Histograms', font_size=14)
         
         btnLayout = BoxLayout(size_hint=(1, None), height=50)
         btnLayout.add_widget(add_hist_button)
         btnLayout.add_widget(create_hists_button)
+        btnLayout.add_widget(save_hists_button)
         
-        histLayout = BoxLayout(orientation='vertical')
-        histLayout.add_widget(Label(text="test"))
-        histLayout.add_widget(Label(text="test2"))
+        self.histLayout = StackLayout(orientation='tb-lr')
+        #histLayout.add_widget(Label(text="test", size_hint=(None, 0.15)))
+        #histLayout.add_widget(Label(text="test", size_hint=(None, 0.15)))
+        #self.histLayout.add_widget(HistDescriptor("test"))
+        #self.histLayout.add_widget(HistDescriptor("test2"))
+        #self.histLayout.add_widget(HistDescriptor("test3"))
+        #self.histLayout.add_widget(HistDescriptor("test4"))
     
-        root = BoxLayout(orientation='vertical')
-        root.add_widget(histLayout)
-        root.add_widget(btnLayout)
-        return root
+        self.root = BoxLayout(orientation='vertical')
+        self.root.add_widget(self.histLayout)
+        self.root.add_widget(btnLayout)
+        self.updateHistList()
+        return self.root
         
     def parseEvalString(self, string):
         varSt = 0
@@ -80,6 +115,9 @@ class HistToolApp(App):
                     
                     string = string[:varSt] + inserted + string[varEnd+1:]
                     break
+        
+        if string == "":
+            return None
         return (vars,"lambda " + ",".join(varReplacements[:len(vars)]) + " : " + string)
         
     def addHistogram(self, instance):
@@ -88,6 +126,9 @@ class HistToolApp(App):
         
         eval_params1 = self.parseEvalString(settings[3])
         eval_params2 = self.parseEvalString(settings[5])
+        if eval_params1 is None or eval_params2 is None:
+            print("No evaluation parameters found. Histogram cancelled.")
+            return 
         
         print(eval_params1)
         print(eval_params2)
@@ -118,8 +159,12 @@ class HistToolApp(App):
 #    def changeLabels(self, tup):
 #        self.labels = tup
 #        
-        self.all_settings.append(settings)
+        all_settings[self.currID] = settings
+        displayed_settings[self.currID] = False
+        self.currID += 1
         self.models.append(model)
+        
+        self.updateHistList()
    
     def createHistograms(self, instance):
         hstats = hist_stats("results_with_data.csv")
@@ -127,6 +172,13 @@ class HistToolApp(App):
             hstats.addHistObject(model)
         
         hstats.execute()
+        
+    def updateHistList(self):
+        for key in all_settings.keys():
+            if all_settings[key] != 0 and displayed_settings[key] == False:
+                self.histLayout.add_widget(HistDescriptor(all_settings[key][0], self.histLayout, key, size_hint=(1,0.5)))
+                displayed_settings[key] = True
+        saveSettings()
 
 if __name__ == '__main__':
     HistToolApp().run()
