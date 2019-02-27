@@ -41,14 +41,16 @@ def loadSettings():
     return idx
         
 class HistDescriptor(BoxLayout):
-    def __init__(self, title, parentWidget, id, **kwargs):
+    def __init__(self, title, mainTool, id, **kwargs):
         super(HistDescriptor, self).__init__(**kwargs)
         self.orientation = 'horizontal'
         self.size_hint = (1,0.1)
-        self.add_widget(Label(text=title,size_hint=(None,0.5)))
-        self.add_widget(Button(text="Remove",size_hint=(None,0.5), on_press=self.removeHist))
-        self.parentWidget = parentWidget
+        self.add_widget(Label(text=title,size_hint=(0.5,0.5)))
+        self.add_widget(Button(text="Edit",size_hint=(0.1,0.5), on_press=self.editHist))
+        self.add_widget(Button(text="Remove",size_hint=(0.1,0.5), on_press=self.removeHist))
+        self.parentWidget = mainTool.histLayout
         self.setting_id = id
+        self.mainTool = mainTool
     #def build(self):
     #    return self
     def removeHist(self, instance):
@@ -56,6 +58,9 @@ class HistDescriptor(BoxLayout):
         all_settings[self.setting_id] = 0
         displayed_settings[self.setting_id] = False
         saveSettings()
+    
+    def editHist(self, instance):
+        self.mainTool.editHist(self.setting_id)
 
 class HistToolApp(App):
 
@@ -91,6 +96,13 @@ class HistToolApp(App):
         self.updateHistList()
         return self.root
         
+    def updateModels(self):
+        self.models = []
+        for key in all_settings:
+            if all_settings[key] != 0:
+                model = self.createModel(all_settings[key])
+                self.models.append(model)
+       
     def parseEvalString(self, string):
         varSt = 0
         varEnd = 0
@@ -120,10 +132,7 @@ class HistToolApp(App):
             return None
         return (vars,"lambda " + ",".join(varReplacements[:len(vars)]) + " : " + string)
         
-    def addHistogram(self, instance):
-        settings = histogram_screen()
-        print(settings)
-        
+    def createModel(self, settings):
         eval_params1 = self.parseEvalString(settings[3])
         eval_params2 = self.parseEvalString(settings[5])
         if eval_params1 is None or eval_params2 is None:
@@ -141,43 +150,41 @@ class HistToolApp(App):
         model.changeLog(settings[6])
         model.changeTitle(settings[0])
         model.changeLabels((settings[2],settings[4]))
+        return model
+        
+    def addHistogram(self, instance):
+        settings = histogram_screen()
         
         #['title', 'ID', 'label1', 'boolean1', 'label2', 'boolean2', True]
         #0           1       2           3           4       5           6
-#        def addTargetQuantity(self, quantity):
-#        self.targetQuantity = quantity
-#   def addParameter(self, group, params, condition):
-#        c = condition.__code__.co_argcount
-#        self.parameters.append((group, params, condition, c))
-#    
-#    def changeLog(self,b):
-#        self.enableLog = b
-#    
-#    def changeTitle(self,s):
-#        self.title = s
-#        
-#    def changeLabels(self, tup):
-#        self.labels = tup
-#        
+        
         all_settings[self.currID] = settings
         displayed_settings[self.currID] = False
         self.currID += 1
-        self.models.append(model)
         
         self.updateHistList()
    
     def createHistograms(self, instance):
+        self.updateModels()
         hstats = hist_stats("results_with_data.csv")
         for model in self.models:
             hstats.addHistObject(model)
         
         hstats.execute()
         
+    def editHist(self, key):
+        setting = all_settings[key]
+        all_settings[key] = histogram_screen(*setting)
+        displayed_settings[key] = False
+        self.updateHistList()
+        
     def updateHistList(self):
-        for key in all_settings.keys():
-            if all_settings[key] != 0 and displayed_settings[key] == False:
-                self.histLayout.add_widget(HistDescriptor(all_settings[key][0], self.histLayout, key, size_hint=(1,0.5)))
-                displayed_settings[key] = True
+        for widget in self.histLayout.children:
+            self.histLayout.remove_widget(widget)
+    
+        for key in range(self.currID+1):
+            if key in all_settings and all_settings[key] != 0:
+                self.histLayout.add_widget(HistDescriptor(all_settings[key][0], self, key, size_hint=(None,None)))
         saveSettings()
 
 if __name__ == '__main__':
