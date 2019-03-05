@@ -7,10 +7,12 @@ from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.scrollview import ScrollView
 from kivy.uix.widget import Widget
 from compute_stats_gui_simple import histogram_screen
 from compute_stats import hist_model, hist_stats
 from collections import defaultdict
+from kivy.core.window import Window
 
 #class TextForm(BoxLayout):
 #    def __init__(self, **kwargs):
@@ -22,45 +24,36 @@ from collections import defaultdict
 #    def build(self):
 #        return self.layout
         
-all_settings = defaultdict(int)
-displayed_settings = defaultdict(bool)
-
-def saveSettings():
-    saved_settings = [all_settings[key] for key in all_settings if all_settings[key] != 0]
-    print(saved_settings)
-    with open('last_settings.hst', 'w') as f:
-        for item in saved_settings:
-            f.write("%s\n" % item)
-                
-def loadSettings():
-    idx = 0
-    with open('last_settings.hst', 'r') as f:
-        for line in f:
-            all_settings[idx] = (eval(line))
-            idx += 1
-    return idx
+#displayed_settings = defaultdict(bool)
         
 class HistDescriptor(BoxLayout):
     def __init__(self, title, mainTool, id, **kwargs):
         super(HistDescriptor, self).__init__(**kwargs)
         self.orientation = 'horizontal'
-        self.size_hint = (1,0.1)
+        self.size_hint = (1,None)
+        self.setting_id = id
+        self.add_widget(Label(text=str(self.setting_id),size_hint=(0.1,0.5)))
         self.add_widget(Label(text=title,size_hint=(0.5,0.5)))
+        self.add_widget(Button(text="Duplicate", size_hint=(0.1,0.5), on_press=self.duplicateHist))
         self.add_widget(Button(text="Edit",size_hint=(0.1,0.5), on_press=self.editHist))
         self.add_widget(Button(text="Remove",size_hint=(0.1,0.5), on_press=self.removeHist))
         self.parentWidget = mainTool.histLayout
-        self.setting_id = id
         self.mainTool = mainTool
+        #self.mainTool.histLayout.height += self.height
     #def build(self):
     #    return self
     def removeHist(self, instance):
         self.parentWidget.remove_widget(self)
-        all_settings[self.setting_id] = 0
-        displayed_settings[self.setting_id] = False
-        saveSettings()
+        self.mainTool.all_settings[self.setting_id] = 0
+        #displayed_settings[self.setting_id] = False
+        self.mainTool.saveSettings()
     
     def editHist(self, instance):
         self.mainTool.editHist(self.setting_id)
+        
+    def duplicateHist(self, instance):
+        print("Duplicate setting ID: " + str(self.setting_id))
+        self.mainTool.duplicateHist(self.setting_id)
 
 class HistToolApp(App):
 
@@ -68,8 +61,26 @@ class HistToolApp(App):
         super().__init__()
         self.models = []
         self.histLayout = None
+        self.scrollView = None
         self.usedIDs = []
-        self.currID = loadSettings() + 1
+        self.all_settings = defaultdict(int)
+        self.currID = self.loadSettings()
+        self.initLayoutHeight = 0
+        
+    def saveSettings(self):
+        saved_settings = [self.all_settings[key] for key in self.all_settings if self.all_settings[key] != 0]
+        #print(saved_settings)
+        with open('last_settings.hst', 'w') as f:
+            for item in saved_settings:
+                f.write("%s\n" % item)
+                
+    def loadSettings(self):
+        idx = 0
+        with open('last_settings.hst', 'r') as f:
+            for line in f:
+                self.all_settings[idx] = (eval(line))
+                idx += 1
+        return idx
 
     def build(self):
     
@@ -82,25 +93,26 @@ class HistToolApp(App):
         btnLayout.add_widget(create_hists_button)
         btnLayout.add_widget(save_hists_button)
         
+        self.scrollView = ScrollView(size_hint=(1, 1))
+        self.scrollView.do_scroll_x = False
         self.histLayout = StackLayout(orientation='tb-lr')
-        #histLayout.add_widget(Label(text="test", size_hint=(None, 0.15)))
-        #histLayout.add_widget(Label(text="test", size_hint=(None, 0.15)))
-        #self.histLayout.add_widget(HistDescriptor("test"))
-        #self.histLayout.add_widget(HistDescriptor("test2"))
-        #self.histLayout.add_widget(HistDescriptor("test3"))
-        #self.histLayout.add_widget(HistDescriptor("test4"))
+        self.histLayout.size_hint = (1,None)
+        self.histLayout.height = 0#Window.height - btnLayout.height
+        self.initLayoutHeight = self.histLayout.height
+        self.histLayout.bind(minimum_height=self.histLayout.setter('height'))
+        self.scrollView.add_widget(self.histLayout)
     
         self.root = BoxLayout(orientation='vertical')
-        self.root.add_widget(self.histLayout)
+        self.root.add_widget(self.scrollView)
         self.root.add_widget(btnLayout)
         self.updateHistList()
         return self.root
         
     def updateModels(self):
         self.models = []
-        for key in all_settings:
-            if all_settings[key] != 0:
-                model = self.createModel(all_settings[key])
+        for key in self.all_settings:
+            if self.all_settings[key] != 0:
+                model = self.createModel(self.all_settings[key])
                 self.models.append(model)
        
     def parseEvalString(self, string):
@@ -139,8 +151,8 @@ class HistToolApp(App):
             print("No evaluation parameters found. Histogram cancelled.")
             return 
         
-        print(eval_params1)
-        print(eval_params2)
+        #print(eval_params1)
+        #print(eval_params2)
         
         model = hist_model()
         
@@ -158,8 +170,8 @@ class HistToolApp(App):
         #['title', 'ID', 'label1', 'boolean1', 'label2', 'boolean2', True]
         #0           1       2           3           4       5           6
         
-        all_settings[self.currID] = settings
-        displayed_settings[self.currID] = False
+        self.all_settings[self.currID] = settings
+        #displayed_settings[self.currID] = False
         self.currID += 1
         
         self.updateHistList()
@@ -173,19 +185,35 @@ class HistToolApp(App):
         hstats.execute()
         
     def editHist(self, key):
-        setting = all_settings[key]
-        all_settings[key] = histogram_screen(*setting)
-        displayed_settings[key] = False
+        setting = self.all_settings[key]
+        self.all_settings[key] = histogram_screen(*setting)
+        #displayed_settings[key] = False
+        self.updateHistList()
+        
+    def duplicateHist(self, key):
+        print("CurrID: " + str(self.currID))
+        self.all_settings[self.currID] = self.all_settings[key]
+        self.currID += 1
         self.updateHistList()
         
     def updateHistList(self):
-        for widget in self.histLayout.children:
-            self.histLayout.remove_widget(widget)
+        #for widget in self.histLayout.children:
+         #   print(widget.setting_id)
+            #self.histLayout.remove_widget(widget)
+        self.histLayout.clear_widgets()
     
         for key in range(self.currID+1):
-            if key in all_settings and all_settings[key] != 0:
-                self.histLayout.add_widget(HistDescriptor(all_settings[key][0], self, key, size_hint=(None,None)))
-        saveSettings()
+            if key in self.all_settings and self.all_settings[key] != 0:
+                self.histLayout.add_widget(HistDescriptor(self.all_settings[key][0], self, key, size_hint=(None,None)))
+        
+        self.histLayout.height = self.initLayoutHeight
+        for child in self.histLayout.children:
+            self.histLayout.height += child.height
+            
+        self.histLayout.bind(minimum_height=self.histLayout.setter('height'))
+        
+        self.saveSettings()
+        print("HistLayout height: " + str(self.histLayout.height))
 
 if __name__ == '__main__':
     HistToolApp().run()
