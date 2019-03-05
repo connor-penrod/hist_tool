@@ -14,6 +14,7 @@ from compute_stats import hist_model, hist_stats
 from collections import defaultdict
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
+import sys
 
 #class TextForm(BoxLayout):
 #    def __init__(self, **kwargs):
@@ -77,6 +78,7 @@ class HistToolApp(App):
         self.all_settings = defaultdict(int)
         self.currID = self.loadSettings()
         self.initLayoutHeight = 10
+        Window.bind(on_resize=self._on_resize)
         
     def saveSettings(self):
         saved_settings = [self.all_settings[key] for key in self.all_settings if self.all_settings[key] != 0]
@@ -94,6 +96,10 @@ class HistToolApp(App):
         return idx
 
     def build(self):
+        
+        if self.root is not None:
+            self.root.clear_widgets()
+            
     
         add_hist_button = Button(text='Add Histogram', font_size=14, on_press=self.addHistogram)
         create_hists_button = Button(text='Create Histograms', font_size=14, on_press=self.createHistograms)
@@ -176,7 +182,11 @@ class HistToolApp(App):
         
     def addHistogram(self, instance):
         settings = histogram_screen()
-        
+        if settings == None:
+            return
+        elif None in settings or "" in settings:
+            print("Error: at least one field was left blank.")
+            return
         #['title', 'ID', 'label1', 'boolean1', 'label2', 'boolean2', True]
         #0           1       2           3           4       5           6
         
@@ -196,7 +206,13 @@ class HistToolApp(App):
         
     def editHist(self, key):
         setting = self.all_settings[key]
-        self.all_settings[key] = histogram_screen(*setting)
+        new_setting = histogram_screen(*setting)
+        if new_setting == None:
+            new_setting = setting
+        elif None in new_setting or "" in new_setting:
+            print("Error: at least one field was left blank.")
+            new_setting = setting
+        self.all_settings[key] = new_setting
         #displayed_settings[key] = False
         self.updateHistList()
         
@@ -224,6 +240,10 @@ class HistToolApp(App):
         
         self.saveSettings()
         print("HistLayout height: " + str(self.histLayout.height))
+    
+    def _on_resize(self, instance, w, h):
+        self.root.size = (w,h)
+        self.updateHistList()
 
 if __name__ == '__main__':
     HistToolApp().run()

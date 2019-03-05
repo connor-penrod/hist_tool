@@ -24,5 +24,8 @@ def histogram_screen(title = "", id = "", label1 = "", param1 = "", label2 = "",
 
     window = sg.Window('Histogram Settings', default_element_size=(40, 1)).Layout(layout)
     button, values = window.Read()
+    if button is None:
+        return None
+    
     window.Close()
     return values
