@@ -15,6 +15,9 @@ from collections import defaultdict
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
 import sys
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import asksaveasfilename
 
 #class TextForm(BoxLayout):
 #    def __init__(self, **kwargs):
@@ -27,6 +30,8 @@ import sys
 #        return self.layout
         
 #displayed_settings = defaultdict(bool)
+        
+Tk().withdraw()
         
 class HistDescriptor(BoxLayout):
     def __init__(self, title, mainTool, id, **kwargs):
@@ -69,6 +74,8 @@ class HistDescriptor(BoxLayout):
 
 class HistToolApp(App):
 
+    autosave_file_name = 'last_settings.hst'
+
     def __init__(self):
         super().__init__()
         self.models = []
@@ -80,16 +87,17 @@ class HistToolApp(App):
         self.initLayoutHeight = 10
         Window.bind(on_resize=self._on_resize)
         
-    def saveSettings(self):
+    def saveSettings(self, fname = autosave_file_name):
         saved_settings = [self.all_settings[key] for key in self.all_settings if self.all_settings[key] != 0]
         #print(saved_settings)
-        with open('last_settings.hst', 'w') as f:
+        with open(fname, 'w') as f:
             for item in saved_settings:
                 f.write("%s\n" % item)
                 
-    def loadSettings(self):
+    def loadSettings(self, fname = autosave_file_name):
         idx = 0
-        with open('last_settings.hst', 'r') as f:
+        self.all_settings = defaultdict(int)
+        with open(fname, 'r') as f:
             for line in f:
                 self.all_settings[idx] = (eval(line))
                 idx += 1
@@ -102,13 +110,18 @@ class HistToolApp(App):
             
     
         add_hist_button = Button(text='Add Histogram', font_size=14, on_press=self.addHistogram)
-        create_hists_button = Button(text='Create Histograms', font_size=14, on_press=self.createHistograms)
-        save_hists_button = Button(text='Save Histograms', font_size=14)
+        create_hists_button = Button(text='Create Graphs', font_size=14, on_press=self.createHistograms)
+        save_hists_button = Button(text='Save Histograms', font_size=14, on_press=self._save_button)
+        load_hists_button = Button(text='Load Histograms', font_size=14, on_press=self._load_button)
+        save_and_load = BoxLayout(orientation='vertical')
+        save_and_load.add_widget(save_hists_button)
+        save_and_load.add_widget(load_hists_button)
+        
         
         btnLayout = BoxLayout(size_hint=(1, None), height=50)
         btnLayout.add_widget(add_hist_button)
         btnLayout.add_widget(create_hists_button)
-        btnLayout.add_widget(save_hists_button)
+        btnLayout.add_widget(save_and_load)
         
         self.scrollView = ScrollView(size_hint=(1, 1))
         self.scrollView.do_scroll_x = False
@@ -123,6 +136,20 @@ class HistToolApp(App):
         self.root.add_widget(btnLayout)
         self.updateHistList()
         return self.root
+        
+    def _load_button(self, instance):
+        filename = askopenfilename() # show an "Open" dialog box and return the path to the selected file
+        if filename == '':
+            return
+        self.idx = self.loadSettings(filename)
+        self.updateHistList()
+        
+    def _save_button(self, instance):
+        filename = asksaveasfilename() # show an "Open" dialog box and return the path to the selected file
+        if filename == '':
+            return
+        self.saveSettings(filename)
+        self.updateHistList()
         
     def updateModels(self):
         self.models = []
