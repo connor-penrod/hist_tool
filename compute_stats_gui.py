@@ -13,6 +13,7 @@ from compute_stats_gui_simple import histogram_screen
 from compute_stats import hist_model, hist_stats
 from collections import defaultdict
 from kivy.core.window import Window
+from kivy.graphics import Color, Rectangle
 
 #class TextForm(BoxLayout):
 #    def __init__(self, **kwargs):
@@ -30,23 +31,33 @@ class HistDescriptor(BoxLayout):
     def __init__(self, title, mainTool, id, **kwargs):
         super(HistDescriptor, self).__init__(**kwargs)
         self.orientation = 'horizontal'
-        self.size_hint = (1,None)
+        #self.size_hint = (1,None)
+        self.size = (Window.width, 50)
         self.setting_id = id
         self.add_widget(Label(text=str(self.setting_id),size_hint=(0.1,0.5)))
-        self.add_widget(Label(text=title,size_hint=(0.5,0.5)))
-        self.add_widget(Button(text="Duplicate", size_hint=(0.1,0.5), on_press=self.duplicateHist))
-        self.add_widget(Button(text="Edit",size_hint=(0.1,0.5), on_press=self.editHist))
-        self.add_widget(Button(text="Remove",size_hint=(0.1,0.5), on_press=self.removeHist))
+        self.add_widget(Label(text=title,size_hint=(0.5,1), pos_hint={'top':0.8}))
+        self.add_widget(Button(text="Duplicate", size_hint=(0.1,0.65), pos_hint={'top':0.65}, on_press=self.duplicateHist))
+        self.add_widget(Button(text="Edit",size_hint=(0.1,0.65), pos_hint={'top':0.65}, on_press=self.editHist))
+        self.add_widget(Button(text="Remove",size_hint=(0.1,0.65), pos_hint={'top':0.65}, on_press=self.removeHist))
         self.parentWidget = mainTool.histLayout
         self.mainTool = mainTool
-        #self.mainTool.histLayout.height += self.height
-    #def build(self):
-    #    return self
+        
+        with self.canvas.before:
+            Color(0, 0, 0, 1)  # green; colors range from 0-1 instead of 0-255
+            self.rect = Rectangle(size=(self.size[0] - 20, self.size[1] - 20), pos=self.pos)
+
+        self.bind(size=self._update_rect, pos=self._update_rect)
+     
+    def _update_rect(self, instance, value):
+        self.rect.pos = instance.pos
+        self.rect.size = (instance.size[0] - 10, instance.size[1] - 10)#instance.size
+
     def removeHist(self, instance):
         self.parentWidget.remove_widget(self)
         self.mainTool.all_settings[self.setting_id] = 0
         #displayed_settings[self.setting_id] = False
-        self.mainTool.saveSettings()
+        #self.mainTool.saveSettings()
+        self.mainTool.updateHistList()
     
     def editHist(self, instance):
         self.mainTool.editHist(self.setting_id)
@@ -65,7 +76,7 @@ class HistToolApp(App):
         self.usedIDs = []
         self.all_settings = defaultdict(int)
         self.currID = self.loadSettings()
-        self.initLayoutHeight = 0
+        self.initLayoutHeight = 10
         
     def saveSettings(self):
         saved_settings = [self.all_settings[key] for key in self.all_settings if self.all_settings[key] != 0]
@@ -97,8 +108,7 @@ class HistToolApp(App):
         self.scrollView.do_scroll_x = False
         self.histLayout = StackLayout(orientation='tb-lr')
         self.histLayout.size_hint = (1,None)
-        self.histLayout.height = 0#Window.height - btnLayout.height
-        self.initLayoutHeight = self.histLayout.height
+        self.histLayout.height = self.initLayoutHeight
         self.histLayout.bind(minimum_height=self.histLayout.setter('height'))
         self.scrollView.add_widget(self.histLayout)
     
